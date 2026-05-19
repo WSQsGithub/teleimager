@@ -30,6 +30,7 @@ import platform
 from teleimager.networking.zmq_config import ZMQ_Responser
 from teleimager.networking.zmq_streaming import ZMQ_PublisherManager
 from teleimager.utilities.buffers import TripleRingBuffer
+from teleimager.utilities.paths import find_project_root
 # webrtc dependencies
 import asyncio
 import json
@@ -48,17 +49,13 @@ from typing import Dict, Optional, Tuple, Any
 # ========================================================
 # cam_config_server.yaml path
 # ========================================================
-from pathlib import Path
-CONFIG_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "..", "..", "..", "cam_config_server.yaml"
-)
-CONFIG_PATH = os.path.normpath(CONFIG_PATH)
+PROJECT_ROOT = find_project_root(Path(__file__).resolve())
+CONFIG_PATH = str(PROJECT_ROOT / "cam_config_server.yaml")
 
 # ========================================================
 # certificate and key paths
 # ========================================================
-module_dir = Path(__file__).resolve().parent.parent.parent.parent
+module_dir = PROJECT_ROOT
 default_cert = module_dir / "cert.pem"
 default_key = module_dir / "key.pem"
 env_cert = os.getenv("XR_TELEOP_CERT")
@@ -504,7 +501,7 @@ class WebRTC_PublisherManager:
         t = WebRTC_PublisherThread(port, host, codec_pref)
         t.start()
         if not t.wait_for_start(timeout=10.0):  # Increase timeout to 10 seconds
-             raise ConnectionError("Publisher failed to start (Timeout)")
+            raise ConnectionError("Publisher failed to start (Timeout)")
         return t
 
     def _get_publisher(self, port, host, codec_pref):
@@ -854,7 +851,7 @@ class BaseCamera:
         return self.__str__()
 
     def _update_frame(self):
-        """Return a jepg frame as bytes, and a bgr frame as numpy array"""
+        """Return a jpeg frame as bytes, and a bgr frame as numpy array"""
         raise NotImplementedError
     
     def wait_until_ready(self, timeout=None):
@@ -1185,8 +1182,6 @@ class IsaacSimCamera(BaseCamera):
             # For WebRTC: use BGR frames directly
             if self._enable_webrtc:
                 self._webrtc_buffer.write(frame_data)
-            else:
-                logger_mp.warning(f"[IsaacSimCamera] Failed to encode to WebRTC for {self._cam_topic}")
             if not self._ready.is_set():
                 self._ready.set()
         else:
@@ -1564,6 +1559,25 @@ def main():
     # usbhub plugout may cause block process exit, no better solution for now
     time.sleep(0.5)
     os.killpg(os.getpgrp(), 9)
+
+
+__all__ = [
+    "BGRArrayVideoStreamTrack",
+    "WebRTC_PublisherThread",
+    "WebRTC_PublisherManager",
+    "CameraFinder",
+    "BaseCamera",
+    "RealSenseCamera",
+    "UVCCamera",
+    "OpenCVCamera",
+    "IsaacSimCamera",
+    "ImageServer",
+    "reload_uvc_driver",
+    "signal_handler",
+    "set_performance_mode",
+    "run_isaacsim_server",
+    "main",
+]
 
 if __name__ == "__main__":
     main()

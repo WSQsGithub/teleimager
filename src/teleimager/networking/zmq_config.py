@@ -12,13 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
 import threading
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 import logging_mp
 import yaml
 import zmq
+
+from teleimager.utilities.paths import find_project_root
 
 logger_mp = logging_mp.getLogger(__name__)
 logger_mp.setLevel(logging_mp.INFO)
@@ -85,10 +87,9 @@ class ZMQ_Requester:
         self._poller = zmq.Poller()
         self._poller.register(self._socket, zmq.POLLIN)
 
-        self._current_dir = os.path.dirname(os.path.abspath(__file__))
-        self._package_dir = os.path.abspath(os.path.join(self._current_dir, "../../../"))
-        self._config_client_path = os.path.join(self._package_dir, "cam_config_client.yaml")
-        self._config_server_path = os.path.join(self._package_dir, "cam_config_server.yaml")
+        self._project_root = find_project_root(Path(__file__).resolve())
+        self._config_client_path = self._project_root / "cam_config_client.yaml"
+        self._config_server_path = self._project_root / "cam_config_server.yaml"
 
     def request(self) -> Optional[Dict[str, Any]]:
         cam_config = None
@@ -106,14 +107,14 @@ class ZMQ_Requester:
                     logger_mp.info(f"Saved camera config to local {self._config_client_path}")
             else:
                 logger_mp.warning(f"Request to {self._host}:{self._port} timed out or no response, using local config.")
-                if os.path.exists(self._config_client_path):
+                if self._config_client_path.exists():
                     try:
                         with open(self._config_client_path, "r") as f:
                             cam_config = yaml.safe_load(f)
                         logger_mp.info(f"Loaded camera config from local {self._config_client_path}")
                     except Exception as e:
                         logger_mp.warning(f"Failed to load local cam_config_client.yaml: {e}")
-                elif os.path.exists(self._config_server_path):
+                elif self._config_server_path.exists():
                     try:
                         with open(self._config_server_path, "r") as f:
                             cam_config = yaml.safe_load(f)

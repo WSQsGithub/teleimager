@@ -22,6 +22,7 @@ import numpy as np
 
 logger_mp = logging_mp.getLogger(__name__)
 logger_mp.setLevel(logging_mp.INFO)
+MIN_INTERVAL_NS = 100_000
 
 
 class TripleRingBuffer:
@@ -59,7 +60,8 @@ class SimpleFPSMonitor:
 
         if self._last_tick is not None:
             interval_ns = now - self._last_tick
-            if interval_ns < 100_000:
+            # Ignore ultra-short intervals caused by timer jitter / duplicate ticks.
+            if interval_ns < MIN_INTERVAL_NS:
                 return
 
             self._times.append(interval_ns)
